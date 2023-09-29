@@ -21,7 +21,7 @@ private:
     struct libinput *li_;
     struct udev *udev_;
     std::thread event_thread_;
-    bool exit_ = false;
+    bool exit_ = false, running_ = false;
     ofPoint lastTouch_[MAXTOUCH];
 
     static int open_restricted(const char *path, int flags, void *user_data);

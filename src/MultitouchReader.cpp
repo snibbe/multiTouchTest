@@ -51,48 +51,70 @@ static void close_restricted(int fd, void *user_data)
         .close_restricted = close_restricted,
 };
 
-int MultitouchReader::startMultitouch() {
-     // Open the libinput context
-    udev_ = udev_new();
-    if (!udev_) {
-        perror("Failed to create udev context");
-        return 1;
-    }
+ int MultitouchReader::startMultitouch()
+ {
+     if (!running_)
+     {
+         // Open the libinput context
+         udev_ = udev_new();
+         if (!udev_)
+         {
+             perror("Failed to create udev context");
+             return 1;
+         }
 
-    li_ = libinput_udev_create_context(&interface, NULL, udev_);
-    if (!li_) {
-        perror("Failed to create libinput context");
-        udev_unref(udev_);
-        return 1;
-    }
+         li_ = libinput_udev_create_context(&interface, NULL, udev_);
+         if (!li_)
+         {
+             perror("Failed to create libinput context");
+             udev_unref(udev_);
+             return 1;
+         }
 
-    libinput_udev_assign_seat(li_, "seat0");
-    if (!li_) {
-        perror("Failed to create libinput context");
-        udev_unref(udev_);
-        return 1;
-    }
-    
-    // Create a separate thread for event handling
-    event_thread_ = std::thread(&MultitouchReader::eventHandler, this); // Pass the current instance
+         libinput_udev_assign_seat(li_, "seat0");
+         if (!li_)
+         {
+             perror("Failed to create libinput context");
+             udev_unref(udev_);
+             return 1;
+         }
 
-    return 0;
-}
+         // Create a separate thread for event handling
+         event_thread_ = std::thread(&MultitouchReader::eventHandler, this); // Pass the current instance
+
+         running_ = true;
+         return 0;
+     }
+     else
+     {
+         // already running
+         return 1;
+     }
+ }
 
 void MultitouchReader::stopMultitouch() {
     exit_ = true;
 
-    if (event_thread_.joinable()) {
-        // Clean up and close the libinput context in the event handler thread
-        event_thread_.join();
-    }
+    if (running_)
+    {
+        if (event_thread_.joinable())
+        {
+            // Clean up and close the libinput context in the event handler thread
+            event_thread_.join();
+        }
 
-    if (li_) {
-        libinput_unref(li_);
-    }
+        if (li_)
+        {
+            // cout << "MultitouchReader::stopMultitouch: li_ = " << ofToString(li_) << endl;
+            libinput_unref(li_);
+        }
 
-    if (udev_) {
-        udev_unref(udev_);
+        if (udev_)
+        {
+            udev_unref(udev_);
+        }
+
+        running_ = false;
     }
 }
 
@@ -166,7 +188,7 @@ void MultitouchReader::eventHandler()
             libinput_event_destroy(ev);
         }
         // Introduce a small delay to avoid high CPU usage
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
